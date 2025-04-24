@@ -1,0 +1,31 @@
+---
+- name: Deploy Spring app to public1
+  hosts: public1
+  become: yes
+
+  tasks:
+    - name: Install Java runtime
+      apt:
+        name: openjdk-11-jre
+        state: present
+        update_cache: yes
+
+    - name: Build the app locally
+      local_action:
+        module: shell
+        cmd: mvn -q clean package -DskipTests
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+
+    - name: Copy JAR to remote
+      copy:
+        src: "{{ playbook_dir }}/../../target/hello-app-1.0.0.jar"
+        dest: /home/ec2-user/app.jar
+        mode: '0755'
+
+    - name: Start the app
+      shell: |
+        pkill -f 'java -jar /home/ec2-user/app.jar' || true
+        nohup java -jar /home/ec2-user/app.jar > /dev/null 2>&1 &
+      args:
+        executable: /bin/bash
